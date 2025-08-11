@@ -66,7 +66,7 @@ jobs:
         git push
     
     - name: Upload LPR data as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: lpr-data-${{ github.run_number }}
         path: |
