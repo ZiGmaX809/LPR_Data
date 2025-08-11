@@ -34,17 +34,33 @@ jobs:
     - name: Run LPR data scraper
       run: |
         python lpr_scraper.py --force
+        
+    - name: List generated files
+      run: |
+        echo "文件列表："
+        ls -la LPR_Data.* || echo "未找到LPR_Data文件"
+        
+        if [ -f "LPR_Data.json" ]; then
+          echo "JSON文件内容预览："
+          head -10 LPR_Data.json
+        else
+          echo "JSON文件未生成"
+        fi
     
     - name: Check for changes
       id: check_changes
       run: |
-        # 检查是否有文件变化
-        if git diff --exit-code --quiet; then
+        # 添加新文件到git跟踪
+        git add LPR_Data.txt LPR_Data.json LPR_Data.csv || true
+        
+        # 检查是否有文件变化（包括新文件）
+        if git diff --cached --exit-code --quiet; then
           echo "changes=false" >> $GITHUB_OUTPUT
-          echo "No changes detected"
+          echo "没有检测到变化"
         else
           echo "changes=true" >> $GITHUB_OUTPUT
-          echo "Changes detected"
+          echo "检测到变化"
+          git diff --cached --name-only
         fi
     
     - name: Commit and push changes
@@ -53,14 +69,11 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # 添加所有LPR数据文件
-        git add LPR_Data.txt LPR_Data.json LPR_Data.csv
-        
         # 获取当前北京时间
         BEIJING_TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
         
-        # 提交变更
-        git commit -m "🤖 自动更新LPR数据 - $BEIJING_TIME" || exit 0
+        # 提交变更（文件已在上一步添加）
+        git commit -m "🤖 自动更新LPR数据 - $BEIJING_TIME"
         
         # 推送到仓库
         git push
