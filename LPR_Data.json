@@ -1,6 +1,11 @@
 {
-  "last_updated": "2025-09-21T03:04:16.669790",
+  "last_updated": "2025-09-22T03:04:14.383763",
   "data": [
+    {
+      "date": "2025-09-22",
+      "one_year_rate": "3.00",
+      "five_year_rate": "3.50"
+    },
     {
       "date": "2025-08-20",
       "one_year_rate": "3.00",
