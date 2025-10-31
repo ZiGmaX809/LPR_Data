@@ -1,14 +1,25 @@
-name: Update LPR Data
+name: LPR Data Management
 
 # 定时运行：每天北京时间上午10点（UTC时间凌晨2点）
-# 也可以手动触发
+# 也可以手动触发，支持多种更新模式
 on:
   schedule:
     - cron: '0 2 * * *'  # UTC时间每天凌晨2点（北京时间上午10点）
   workflow_dispatch:  # 允许手动触发
+    inputs:
+      update_mode:
+        description: '更新模式'
+        required: false
+        type: choice
+        options:
+          - force
+          - incremental
+          - quality-check
+        default: force
   push:
     paths:
       - 'lpr_scraper.py'
+      - 'lpr_scraper_integrated.py'
       - '.github/workflows/update-lpr-data.yml'
 
 jobs:
@@ -35,20 +46,121 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests beautifulsoup4
     
-    - name: Run LPR data scraper
+    - name: Determine update mode
+      id: mode
       run: |
-        python lpr_scraper.py --force
-        
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          # 定时触发使用增量模式
+          echo "mode=incremental" >> $GITHUB_OUTPUT
+          echo "description=定时增量更新" >> $GITHUB_OUTPUT
+        elif [ -n "${{ github.event.inputs.update_mode }}" ]; then
+          # 手动触发使用指定模式
+          echo "mode=${{ github.event.inputs.update_mode }}" >> $GITHUB_OUTPUT
+          echo "description=手动${{ github.event.inputs.update_mode }}模式" >> $GITHUB_OUTPUT
+        else
+          # 默认强制更新
+          echo "mode=force" >> $GITHUB_OUTPUT
+          echo "description=默认强制更新" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run LPR data operation
+      run: |
+        echo "🚀 LPR数据管理工具 - 运行时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')"
+        echo "📝 操作模式: ${{ steps.mode.outputs.description }}"
+
+        case "${{ steps.mode.outputs.mode }}" in
+          "force")
+            echo "🔄 强制更新所有数据..."
+            python lpr_scraper_integrated.py --force
+            ;;
+          "incremental")
+            echo "📊 增量更新数据..."
+            python lpr_scraper_integrated.py --incremental-only
+            ;;
+          "quality-check")
+            echo "🔍 仅执行质量检查..."
+            python lpr_scraper_integrated.py --incremental-only || echo "质量检查完成"
+            ;;
+          *)
+            echo "❓ 未知模式，使用默认强制更新"
+            python lpr_scraper_integrated.py --force
+            ;;
+        esac
+
     - name: List generated files
       run: |
-        echo "文件列表："
+        echo "完整数据文件："
         ls -la LPR_Data.* || echo "未找到LPR_Data文件"
-        
+
         if [ -f "LPR_Data.json" ]; then
           echo "JSON文件内容预览："
           head -10 LPR_Data.json
         else
           echo "JSON文件未生成"
+        fi
+
+    - name: List yearly data files
+      run: |
+        echo "按年份分割的文件："
+        if [ -d "yearly_data" ]; then
+          ls -la yearly_data/
+          echo "年份数据统计："
+          for file in yearly_data/LPR_Data_*.csv; do
+            if [ -f "$file" ]; then
+              year=$(basename "$file" .csv | cut -d'_' -f3)
+              count=$(tail -n +2 "$file" | wc -l)
+              echo "$year 年: $count 条记录"
+            fi
+          done
+        else
+          echo "yearly_data 目录不存在"
+        fi
+
+    - name: Perform quality check
+      run: |
+        echo ""
+        echo "🔍 执行数据质量检查..."
+
+        # 检查主数据文件
+        if [ -f "LPR_Data.csv" ]; then
+          total_records=$(tail -n +2 LPR_Data.csv | wc -l)
+          first_date=$(tail -n +2 LPR_Data.csv | tail -1 | cut -d',' -f1)
+          last_date=$(tail -n +2 LPR_Data.csv | head -1 | cut -d',' -f1)
+          echo "✅ 主数据文件: $total_records 条记录 ($first_date 至 $last_date)"
+        else
+          echo "❌ 主数据文件不存在"
+        fi
+
+        # 检查年份数据
+        if [ -d "yearly_data" ]; then
+          yearly_files=(yearly_data/LPR_Data_*.csv)
+          yearly_count=0
+          for file in "${yearly_files[@]}"; do
+            if [ -f "$file" ]; then
+              yearly_count=$((yearly_count + 1))
+            fi
+          done
+          echo "✅ 年份数据文件: $yearly_count 个年份"
+
+          # 检查数据一致性
+          if [ -f "LPR_Data.csv" ]; then
+            main_records=$(tail -n +2 LPR_Data.csv | wc -l)
+            yearly_records=0
+            for file in "${yearly_files[@]}"; do
+              if [ -f "$file" ]; then
+                count=$(tail -n +2 "$file" | wc -l)
+                yearly_records=$((yearly_records + count))
+              fi
+            done
+
+            if [ $main_records -eq $yearly_records ]; then
+              echo "✅ 数据一致性检查通过"
+            else
+              echo "⚠️ 数据不一致: 主文件 $main_records 条，年份文件总计 $yearly_records 条"
+            fi
+          fi
+        else
+          echo "❌ 年份数据目录不存在"
         fi
     
     - name: Check for changes
@@ -56,7 +168,8 @@ jobs:
       run: |
         # 添加新文件到git跟踪
         git add LPR_Data.txt LPR_Data.json LPR_Data.csv || true
-        
+        git add yearly_data/ || true
+
         # 检查是否有文件变化（包括新文件）
         if git diff --cached --exit-code --quiet; then
           echo "changes=false" >> $GITHUB_OUTPUT
@@ -72,13 +185,19 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
+
         # 获取当前北京时间
         BEIJING_TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
-        
+
         # 提交变更（文件已在上一步添加）
-        git commit -m "🤖 自动更新LPR数据 - $BEIJING_TIME"
-        
+        git commit -m "🤖 LPR数据管理 - $BEIJING_TIME
+
+        模式: ${{ steps.mode.outputs.description }}
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+
         # 推送到仓库
         git push
     
@@ -90,6 +209,7 @@ jobs:
           LPR_Data.txt
           LPR_Data.json
           LPR_Data.csv
+          yearly_data/
         retention-days: 30
     
     - name: Create release on significant updates
@@ -99,12 +219,44 @@ jobs:
         if [ -f "LPR_Data.json" ]; then
           RECORD_COUNT=$(python -c "import json; data=json.load(open('LPR_Data.json')); print(len(data['data']))")
           echo "Current record count: $RECORD_COUNT"
-          
+
           # 如果记录数量是5的倍数，创建一个release（可选）
           if [ $((RECORD_COUNT % 5)) -eq 0 ]; then
             echo "Creating release for milestone: $RECORD_COUNT records"
             # 这里可以添加创建release的逻辑
           fi
         fi
+
+  # 清理旧的artifacts以节省存储空间
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: update-lpr-data
+    permissions:
+      actions: write  # 需要actions权限来删除artifacts
+
+    steps:
+    - name: Delete old artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+
+          // 保留最新的5个artifacts
+          if (artifacts.data.artifacts.length > 5) {
+            const artifactsToDelete = artifacts.data.artifacts.slice(5);
+
+            for (const artifact of artifactsToDelete) {
+              console.log(`删除artifact: ${artifact.name}`);
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+            }
+          }
 
         

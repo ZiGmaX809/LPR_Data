@@ -1,0 +1,71 @@
+{
+  "year": 2022,
+  "total_records": 12,
+  "date_range": {
+    "start": "2022-01-20",
+    "end": "2022-12-20"
+  },
+  "last_updated": "2025-10-31T10:46:19.802701",
+  "data": [
+    {
+      "date": "2022-12-20",
+      "one_year_rate": "3.65",
+      "five_year_rate": "4.30"
+    },
+    {
+      "date": "2022-11-21",
+      "one_year_rate": "3.65",
+      "five_year_rate": "4.30"
+    },
+    {
+      "date": "2022-10-20",
+      "one_year_rate": "3.65",
+      "five_year_rate": "4.30"
+    },
+    {
+      "date": "2022-09-20",
+      "one_year_rate": "3.65",
+      "five_year_rate": "4.30"
+    },
+    {
+      "date": "2022-08-22",
+      "one_year_rate": "3.65",
+      "five_year_rate": "4.30"
+    },
+    {
+      "date": "2022-07-20",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.45"
+    },
+    {
+      "date": "2022-06-20",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.45"
+    },
+    {
+      "date": "2022-05-20",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.45"
+    },
+    {
+      "date": "2022-04-20",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.60"
+    },
+    {
+      "date": "2022-03-21",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.60"
+    },
+    {
+      "date": "2022-02-21",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.60"
+    },
+    {
+      "date": "2022-01-20",
+      "one_year_rate": "3.70",
+      "five_year_rate": "4.60"
+    }
+  ]
+}
