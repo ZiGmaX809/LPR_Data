@@ -1,12 +1,17 @@
 {
   "year": 2025,
-  "total_records": 10,
+  "total_records": 11,
   "date_range": {
     "start": "2025-01-20",
-    "end": "2025-10-20"
+    "end": "2025-11-20"
   },
-  "last_updated": "2025-10-31T05:04:18.240323",
+  "last_updated": "2025-11-21T03:07:30.357249",
   "data": [
+    {
+      "date": "2025-11-20",
+      "one_year_rate": "3.00",
+      "five_year_rate": "3.50"
+    },
     {
       "date": "2025-10-20",
       "one_year_rate": "3.00",
