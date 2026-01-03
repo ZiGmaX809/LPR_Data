@@ -300,6 +300,82 @@ class LPRDataFetcher:
             print(f"❌ 保存完整数据文件失败: {e}")
             return False
 
+    def ensure_current_year_placeholder(self, existing_data: Dict[int, List[Dict]]) -> bool:
+        """
+        确保当前年份文件存在（即使没有数据）
+        解决每年1月20日之前，因为新数据未发布导致yearly_data中没有当年数据的问题
+
+        例如：现在是2026年1月3日，虽然2026年还没有LPR数据发布，
+        但需要创建2026年的占位文件，确保API能正确获取年份列表
+
+        Args:
+            existing_data: 已存在的年份数据
+
+        Returns:
+            是否创建了新文件
+        """
+        current_year = datetime.datetime.now().year
+
+        # 检查当前年份是否已存在且有数据
+        if current_year in existing_data and existing_data[current_year]:
+            print(f"✅ 当前年份 {current_year} 数据已存在，无需创建占位文件")
+            return False
+
+        # 检查占位文件是否已存在
+        json_file = os.path.join(self.output_dir, f"LPR_Data_{current_year}.json")
+        if os.path.exists(json_file):
+            # 文件已存在，检查是占位文件还是有数据
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if data.get('data'):
+                        # 有真实数据
+                        print(f"✅ 当前年份 {current_year} 文件已存在且有数据")
+                        return False
+                    else:
+                        # 是占位文件（data为空），更新last_updated时间
+                        data['last_updated'] = datetime.datetime.now().isoformat()
+                        with open(json_file, 'w', encoding='utf-8') as f:
+                            json.dump(data, f, ensure_ascii=False, indent=2)
+                        return False
+            except Exception:
+                # 文件损坏，继续创建新文件
+                pass
+
+        # 创建当前年份的空占位文件
+        try:
+            base_filename = f"LPR_Data_{current_year}"
+
+            # 创建空的CSV文件（只包含表头）
+            csv_file = os.path.join(self.output_dir, f"{base_filename}.csv")
+            with open(csv_file, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['日期', '一年期LPR(%)', '五年期以上LPR(%)'])
+
+            # 创建空的JSON占位文件
+            json_file = os.path.join(self.output_dir, f"{base_filename}.json")
+            json_data = {
+                'year': current_year,
+                'total_records': 0,
+                'date_range': {
+                    'start': None,
+                    'end': None
+                },
+                'last_updated': datetime.datetime.now().isoformat(),
+                'data': [],
+                'note': f'该文件为占位文件，LPR数据通常每月20日发布，{current_year}年的数据将在首次发布后自动更新'
+            }
+
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+            print(f"📝 创建当前年份 {current_year} 的占位文件（等待数据发布）")
+            return True
+
+        except Exception as e:
+            print(f"❌ 创建当前年份占位文件失败: {e}")
+            return False
+
     def fetch_and_save(self, force_update: bool = False) -> bool:
         """
         爬取数据并按年份保存
@@ -338,6 +414,8 @@ class LPRDataFetcher:
 
         if not updates_needed:
             print("📊 所有数据都是最新的，无需更新")
+            # 但仍需确保当前年份文件存在（解决每年1月20日前没有当年数据的问题）
+            self.ensure_current_year_placeholder(existing_data)
             return True
 
         # 保存需要更新的年份数据
@@ -353,6 +431,10 @@ class LPRDataFetcher:
 
         # 保存完整数据文件（保持兼容性）
         self.save_complete_data(new_data, all_text)
+
+        # 确保当前年份文件存在（解决每年1月20日前没有当年数据的问题）
+        # 这会创建当前年份的占位文件，确保API能正确获取年份列表
+        self.ensure_current_year_placeholder(existing_data)
 
         # 输出结果摘要
         print(f"\n📋 更新摘要:")
@@ -405,6 +487,13 @@ def main():
     if not force_update and not check_data_freshness():
         print("📊 数据已是最新，无需更新")
         print("💡 使用 --force 强制更新所有数据")
+
+        # 即使数据是最新，也要确保当前年份文件存在
+        # 解决每年1月20日前没有当年数据导致API获取年份列表错误的问题
+        fetcher = LPRDataFetcher()
+        existing_data = fetcher.load_existing_data()
+        fetcher.ensure_current_year_placeholder(existing_data)
+
         return 0
 
     # 创建爬取器并执行
@@ -416,6 +505,11 @@ def main():
         return 0
     else:
         print("❌ LPR数据处理失败！")
+
+        # 即使处理失败，也要确保当前年份文件存在
+        existing_data = fetcher.load_existing_data()
+        fetcher.ensure_current_year_placeholder(existing_data)
+
         return 1
 
 
