@@ -10,18 +10,19 @@
 - 🔄 **自动化**: GitHub Actions workflows自动化处理
 - 📊 **质量监控**: 数据完整性检查和质量报告
 - 📦 **多格式支持**: CSV、JSON、TXT三种格式
+- 🆕 **智能占位**: 自动创建当前年份占位文件，解决年初数据未发布问题
 
 ## 📁 项目文件结构
 
 ```
 LPR_Data/
 ├── README.md                       # 项目主说明文档
-├── README_完整使用指南.md          # 本完整使用指南
 ├── LPR_Data.csv                    # 完整的LPR数据（CSV格式）
 ├── LPR_Data.json                   # 完整的LPR数据（JSON格式）
 ├── LPR_Data.txt                    # 原始格式数据
 ├── lpr_scraper.py                  # 基础爬取工具（简单模式）
 ├── lpr_scraper_integrated.py       # 集成爬取工具（推荐使用）
+├── requirements.txt                # Python依赖包列表
 ├── .github/
 │   └── workflows/
 │       ├── update-lpr-data.yml     # 主数据更新workflow
@@ -41,8 +42,12 @@ LPR_Data/
     ├── LPR_Data_2024.csv
     ├── LPR_Data_2024.json
     ├── LPR_Data_2025.csv
-    └── LPR_Data_2025.json
+    ├── LPR_Data_2025.json
+    ├── LPR_Data_2026.json          # 当前年份占位文件（等待数据发布）
+    └── LPR_Data_2026.csv
 ```
+
+> **注意**: 当前年份（如2026年）的占位文件会在首次运行时自动创建。由于LPR数据通常每月20日发布，1月1日-1月19日期间该文件为空占位，首次数据发布后会自动更新。
 
 ## 🚀 快速开始
 
@@ -82,6 +87,7 @@ python3 lpr_scraper.py
 - 📅 自动检测数据是否需要更新
 - 💾 支持多种输出格式（CSV、JSON、TXT）
 - ⚡ **高效处理**: 一次运行完成爬取和分割，避免重复处理
+- 🆕 **智能占位**: 自动创建当前年份占位文件，解决年初数据缺失问题
 
 #### 使用方法
 
@@ -102,10 +108,21 @@ python3 lpr_scraper_integrated.py --force
 3. 🔍 智能比较新旧数据，识别需要更新的年份
 4. 💾 直接保存需要更新的年份文件
 5. 📦 同时生成完整数据文件（保持兼容性）
+6. 🆕 确保当前年份占位文件存在（解决年初数据未发布问题）
 
 #### 输出文件
 - **年份数据**: `yearly_data/LPR_Data_YYYY.csv` 和 `LPR_Data_YYYY.json`
 - **完整数据**: `LPR_Data.csv`, `LPR_Data.json`, `LPR_Data.txt`（保持兼容性）
+
+#### 当前年份占位文件机制
+
+**问题背景**: 每年1月1日-1月19日期间，由于LPR数据通常在每月20日发布，新一年的数据尚未发布，导致 `yearly_data` 目录中缺少当前年份文件。这会导致依赖年份列表的API服务获取不到正确的年份信息。
+
+**解决方案**: 脚本会自动检查并创建当前年份的占位文件：
+- 如果当前年份文件不存在，自动创建空占位文件
+- 占位文件包含标准的JSON结构和空的 `data` 数组
+- 当首次LPR数据发布后，脚本会自动更新该文件为真实数据
+- 确保API服务始终能获取到完整的年份列表
 
 ### 2. LPR基础爬取工具 (`lpr_scraper.py`) - 简单模式
 
@@ -147,8 +164,9 @@ python3 lpr_scraper.py --force
 **执行流程:**
 1. 🕷️ **集成爬取和分割**: 使用 `lpr_scraper_integrated.py` 一次完成数据爬取和按年份分割
 2. 🔄 **智能增量更新**: 自动比较新旧数据，只更新有变化的年份
-3. 📤 自动提交和推送更新
-4. 📦 上传数据文件为artifacts
+3. 🆕 **占位文件管理**: 确保当前年份文件存在，解决年初数据缺失问题
+4. 📤 自动提交和推送更新
+5. 📦 上传数据文件为artifacts
 
 ### Workflow 2: `split-lpr-data.yml` - 数据分割
 
@@ -203,7 +221,8 @@ python3 lpr_scraper.py --force
 ## 📊 数据统计
 
 ### 当前数据覆盖情况
-- **数据年份**: 2019-2025年
+- **数据年份**: 2019-2025年（完整数据）
+- **当前年份**: 2026年（占位文件，等待数据发布）
 - **记录统计**:
   - 2019年：5条记录
   - 2020年：12条记录
@@ -211,8 +230,9 @@ python3 lpr_scraper.py --force
   - 2022年：12条记录
   - 2023年：12条记录
   - 2024年：12条记录
-  - 2025年：10条记录
-- **总计**: 75条记录
+  - 2025年：12条记录
+  - 2026年：0条记录（占位文件）
+- **总计**: 77条记录
 
 ### 输出结果（Artifacts）
 每次workflow运行都会生成可下载的artifacts：
@@ -236,6 +256,7 @@ python3 lpr_scraper.py --force
 
 ### 5. API服务
 可以基于年份数据构建API服务，提供按年份查询功能。
+> **提示**: 当前年份占位文件确保API在年初也能正确获取年份列表，不会因为数据未发布而出现年份遗漏
 
 ## 🛠️ 故障排除
 
@@ -248,13 +269,18 @@ python3 lpr_scraper.py --force
 
 2. **数据分割失败**
    - 确保 `LPR_Data.csv` 文件存在且格式正确
-   - 检查 `lpr_data_splitter.py` 代码是否有语法错误
+   - 检查 `lpr_scraper_integrated.py` 代码是否有语法错误
    - 查看权限设置是否正确
 
 3. **提交失败**
    - 检查 GITHUB_TOKEN 权限
    - 确认仓库设置允许 Actions 写入内容
    - 可能需要配置 PAT（Personal Access Token）
+
+4. **当前年份文件缺失**
+   - 正常情况下脚本会自动创建占位文件
+   - 如果缺失，运行 `python3 lpr_scraper_integrated.py` 手动创建
+   - 检查 `yearly_data` 目录权限
 
 ### 调试技巧
 
@@ -266,10 +292,10 @@ python3 lpr_scraper.py --force
 2. **本地测试**
    ```bash
    # 本地测试数据爬取
-   python lpr_scraper.py --force
+   python3 lpr_scraper_integrated.py --force
 
-   # 本地测试数据分割
-   python lpr_data_splitter.py
+   # 检查占位文件
+   ls -la yearly_data/LPR_Data_$(date +%Y)*
    ```
 
 3. **检查文件状态**
@@ -279,6 +305,9 @@ python3 lpr_scraper.py --force
 
    # 检查数据完整性
    wc -l LPR_Data.csv yearly_data/*.csv
+
+   # 查看当前年份占位文件内容
+   cat yearly_data/LPR_Data_$(date +%Y).json
    ```
 
 ## ⚙️ 配置说明
@@ -289,9 +318,14 @@ python3 lpr_scraper.py --force
 - `actions: write`: 用于清理 artifacts（仅在 quality check workflow）
 
 ### 环境要求
-- Python 3.9
+- Python 3.9+
 - 依赖包：`requests`, `beautifulsoup4`
 - Ubuntu 最新版本
+
+### 依赖安装
+```bash
+pip install -r requirements.txt
+```
 
 ### 定时任务
 - **数据更新**: 每天 UTC 02:00（北京时间 10:00）
@@ -303,12 +337,13 @@ python3 lpr_scraper.py --force
 
 | 特性 | 集成工具 (`lpr_scraper_integrated.py`) | 基础工具 (`lpr_scraper.py`) |
 |------|-------------------------------------|---------------------------|
-| **主要功能** | 爬取 + 分割 + 增量更新 | 仅爬取 |
+| **主要功能** | 爬取 + 分割 + 增量更新 + 占位文件 | 仅爬取 |
 | **处理步骤** | 1步完成 | 1步完成 |
 | **年份数据** | ✅ 自动按年份分割 | ❌ 不分割 |
 | **增量更新** | ✅ 智能识别变化年份 | ❌ 无 |
+| **占位文件** | ✅ 自动创建当前年份占位 | ❌ 无 |
 | **处理时间** | 快（一次完成） | 快（仅爬取） |
-| **推荐场景** | 日常使用、自动化 | 仅需完整数据、调试 |
+| **推荐场景** | 日常使用、自动化、API服务 | 仅需完整数据、调试 |
 
 ### 性能优势
 
@@ -317,6 +352,7 @@ python3 lpr_scraper.py --force
 3. **💾 内存优化**: 流式处理，避免同时加载大量数据
 4. **🔄 智能比较**: 基于数据内容而非文件时间进行增量判断
 5. **⚡ 并行友好**: 各年份独立处理，天然支持并行化
+6. **🆕 智能占位**: 确保年份列表完整性，解决API服务边界问题
 
 ### 自动化优化
 
@@ -324,6 +360,7 @@ python3 lpr_scraper.py --force
 2. **并行处理**: 多个年份可以并行处理
 3. **Artifact清理**: 自动删除旧的 artifacts 节省存储
 4. **智能跳过**: 基于数据内容避免重复处理
+5. **占位管理**: 自动维护当前年份文件，确保服务可用性
 
 ## 🔧 自定义配置
 
@@ -352,11 +389,61 @@ retention-days: 30  # 保留30天
 - **排序**: 按日期从新到旧排序
 
 ### JSON格式说明
-- **year**: 数据年份
-- **total_records**: 记录总数
-- **date_range**: 数据日期范围（start/end）
-- **last_updated**: 最后更新时间（ISO格式）
-- **data**: 数据记录数组
+
+#### 完整数据文件
+```json
+{
+  "last_updated": "2026-01-03T16:25:22.123456",
+  "data": [
+    {
+      "date": "2025-12-20",
+      "one_year_rate": "3.10",
+      "five_year_rate": "3.60"
+    }
+  ]
+}
+```
+
+#### 年份数据文件
+```json
+{
+  "year": 2025,
+  "total_records": 12,
+  "date_range": {
+    "start": "2025-01-20",
+    "end": "2025-12-20"
+  },
+  "last_updated": "2026-01-03T16:25:22.123456",
+  "data": [
+    {
+      "date": "2025-12-20",
+      "one_year_rate": "3.10",
+      "five_year_rate": "3.60"
+    }
+  ]
+}
+```
+
+#### 占位文件格式（当前年份无数据时）
+```json
+{
+  "year": 2026,
+  "total_records": 0,
+  "date_range": {
+    "start": null,
+    "end": null
+  },
+  "last_updated": "2026-01-03T16:25:33.682056",
+  "data": [],
+  "note": "该文件为占位文件，LPR数据通常每月20日发布，2026年的数据将在首次发布后自动更新"
+}
+```
+
+> **API集成提示**: 当读取年份数据时，应正确处理占位文件情况：
+> - `total_records` 为 0 表示该年份暂无数据
+> - `date_range` 的 `start` 和 `end` 为 `null`
+> - `data` 数组为空
+> - `note` 字段包含说明信息
 
 ## 📞 支持与反馈
 
@@ -371,8 +458,9 @@ retention-days: 30  # 保留30天
 - **v2.0**: 增加数据分割功能
 - **v3.0**: 完整的GitHub Actions workflows
 - **v3.1**: 数据质量检查和监控
+- **v3.2**: 当前年份智能占位文件功能
 
 ---
 
-*最后更新: 2025-10-31*
-*版本: v3.1*
+*最后更新: 2026-01-03*
+*版本: v3.2*

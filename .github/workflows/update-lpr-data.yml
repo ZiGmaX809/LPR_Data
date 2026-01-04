@@ -227,6 +227,68 @@ jobs:
           fi
         fi
 
+    - name: Sync files to Alibaba Cloud ECS
+      # 仅在有数据变化时同步到服务器
+      if: steps.check_changes.outputs.changes == 'true'
+      env:
+        ECS_HOST: ${{ secrets.ECS_HOST }}
+        ECS_PORT: ${{ secrets.ECS_PORT || '22' }}
+        ECS_USER: ${{ secrets.ECS_USER }}
+        ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
+      run: |
+        echo "📡 检查是否需要同步到阿里云 ECS..."
+
+        # 检查必要的 Secrets 是否配置，未配置则跳过
+        if [ -z "$ECS_HOST" ] || [ -z "$ECS_USER" ] || [ -z "$ECS_SSH_KEY" ]; then
+          echo "⏭️  ECS 同步未配置，跳过此步骤"
+          echo "💡 如需启用，请在 GitHub 仓库 Settings > Secrets 中配置："
+          echo "   - ECS_HOST"
+          echo "   - ECS_PORT (可选，默认 22)"
+          echo "   - ECS_USER"
+          echo "   - ECS_SSH_KEY"
+          exit 0
+        fi
+
+        echo "🚀 开始同步文件到阿里云 ECS..."
+
+        # 设置 SSH 密钥
+        mkdir -p ~/.ssh
+        echo "$ECS_SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -p $ECS_PORT -H $ECS_HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+        # 目标路径（相对于 chroot 的路径）
+        TARGET_DIR="/api_data/lpr"
+
+        echo "📂 目标目录: $TARGET_DIR"
+        echo "🖥️  服务器: $ECS_USER@$ECS_HOST:$ECS_PORT"
+
+        # 使用 SCP 同步文件
+        # 1. 创建目标目录结构
+        echo "创建目录结构..."
+        scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+          -r $ECS_USER@$ECS_HOST:$TARGET_DIR /tmp/backup_ 2>/dev/null || true
+
+        # 2. 上传完整 JSON 文件
+        if [ -f "LPR_Data.json" ]; then
+          echo "📤 上传 LPR_Data.json..."
+          scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            LPR_Data.json $ECS_USER@$ECS_HOST:$TARGET_DIR/
+        fi
+
+        # 3. 上传年份分割的 JSON 文件到 yearly_data 子目录
+        if [ -d "yearly_data" ]; then
+          echo "📤 上传 yearly_data/*.json..."
+          scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+            yearly_data/*.json $ECS_USER@$ECS_HOST:$TARGET_DIR/yearly_data/
+        fi
+
+        # 4. 清理私钥
+        rm -f ~/.ssh/id_rsa
+
+        echo "✅ 文件同步完成"
+        echo "🌐 访问地址: https://casecat.cn/api_data/lpr/"
+
   # 清理旧的artifacts以节省存储空间
   cleanup:
     runs-on: ubuntu-latest
