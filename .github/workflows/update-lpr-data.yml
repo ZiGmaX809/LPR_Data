@@ -287,7 +287,6 @@ jobs:
         rm -f ~/.ssh/id_rsa
 
         echo "✅ 文件同步完成"
-        echo "🌐 访问地址: https://casecat.cn/api_data/lpr/"
 
   # 清理旧的artifacts以节省存储空间
   cleanup:
