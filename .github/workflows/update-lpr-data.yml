@@ -1,10 +1,10 @@
 name: LPR Data Management
 
-# 定时运行：每天北京时间上午10点（UTC时间凌晨2点）
+# 定时运行：每天北京时间凌晨3点（UTC时间前一天19点）
 # 也可以手动触发，支持多种更新模式
 on:
   schedule:
-    - cron: '0 2 * * *'  # UTC时间每天凌晨2点（北京时间上午10点）
+    - cron: '0 19 * * *'  # UTC时间每天19点（北京时间凌晨3点）
   workflow_dispatch:  # 允许手动触发
     inputs:
       update_mode:
@@ -166,17 +166,24 @@ jobs:
     - name: Check for changes
       id: check_changes
       run: |
-        # 添加新文件到git跟踪
-        git add LPR_Data.txt LPR_Data.json LPR_Data.csv || true
-        git add yearly_data/ || true
+        # 添加文件到git跟踪
+        git add LPR_Data.json LPR_Data.csv yearly_data/ || true
 
-        # 检查是否有文件变化（包括新文件）
-        if git diff --cached --exit-code --quiet; then
+        # 只检查JSON文件是否有变化
+        echo "检查JSON文件变化..."
+
+        # 获取当前分支上一次提交的JSON内容（如果存在）
+        git show HEAD:LPR_Data.json 2>/dev/null > /tmp/old_json.json || echo "{}" > /tmp/old_json.json
+        cp LPR_Data.json /tmp/new_json.json 2>/dev/null || echo "{}" > /tmp/new_json.json
+
+        # 比较JSON文件内容（忽略空格差异）
+        if diff -q <(python -c "import json; print(json.dumps(json.load(open('/tmp/old_json.json')), sort_keys=True, indent=2, ensure_ascii=False))") \
+                    <(python -c "import json; print(json.dumps(json.load(open('/tmp/new_json.json')), sort_keys=True, indent=2, ensure_ascii=False))") >/dev/null 2>&1; then
           echo "changes=false" >> $GITHUB_OUTPUT
-          echo "没有检测到变化"
+          echo "JSON文件没有变化，跳过推送"
         else
           echo "changes=true" >> $GITHUB_OUTPUT
-          echo "检测到变化"
+          echo "JSON文件有变化，将推送更新"
           git diff --cached --name-only
         fi
     
