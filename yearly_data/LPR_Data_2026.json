@@ -1,11 +1,7 @@
 {
   "year": 2026,
   "total_records": 0,
-  "date_range": {
-    "start": null,
-    "end": null
-  },
-  "last_updated": "2026-01-06T03:15:23.000428",
-  "data": [],
-  "note": "该文件为占位文件，LPR数据通常每月20日发布，2026年的数据将在首次发布后自动更新"
+  "date_range": {},
+  "last_updated": "2026-01-07T19:26:41.807918",
+  "data": []
 }
