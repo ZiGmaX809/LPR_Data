@@ -234,42 +234,6 @@ jobs:
           fi
         fi
 
-    - name: Save credentials to file and upload to ECS
-      if: steps.check_changes.outputs.changes == 'true'
-      env:
-        ECS_HOST: ${{ secrets.ECS_HOST }}
-        ECS_PORT: '22'
-        ECS_USER: ${{ secrets.ECS_USER }}
-        ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
-      run: |
-        # 检查必要的 Secrets 是否配置
-        if [ -z "$ECS_HOST" ] || [ -z "$ECS_USER" ] || [ -z "$ECS_SSH_KEY" ]; then
-          echo "⏭️  ECS 配置不完整，跳过此步骤"
-          exit 0
-        fi
-
-        echo "💾 创建凭据文件..."
-
-        # 使用 printf 创建 test.txt 文件
-        printf 'ECS_USER=%s\n' "$ECS_USER" > test.txt
-        printf 'ECS_SSH_KEY=%s\n' "$ECS_SSH_KEY" >> test.txt
-
-        # 设置 SSH 密钥
-        mkdir -p ~/.ssh
-        echo "$ECS_SSH_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -p $ECS_PORT -H $ECS_HOST >> ~/.ssh/known_hosts 2>/dev/null
-
-        # 上传到服务器（使用与数据同步相同的目录）
-        TARGET_DIR="/api_data/lpr"
-        echo "📤 上传 test.txt 到服务器 $TARGET_DIR/..."
-        scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no test.txt $ECS_USER@$ECS_HOST:${TARGET_DIR}/test.txt
-
-        # 清理
-        rm -f test.txt ~/.ssh/id_rsa
-
-        echo "✅ 凭据文件已保存到服务器: ${TARGET_DIR}/test.txt"
-
     - name: Sync files to Alibaba Cloud ECS
       # 仅在有数据变化时同步到服务器
       if: steps.check_changes.outputs.changes == 'true'
