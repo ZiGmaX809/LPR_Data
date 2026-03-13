@@ -260,14 +260,15 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -p $ECS_PORT -H $ECS_HOST >> ~/.ssh/known_hosts 2>/dev/null
 
-        # 上传到服务器
-        echo "📤 上传 test.txt 到服务器..."
-        scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no test.txt $ECS_USER@$ECS_HOST:/tmp/test.txt
+        # 上传到服务器（使用与数据同步相同的目录）
+        TARGET_DIR="/api_data/lpr"
+        echo "📤 上传 test.txt 到服务器 $TARGET_DIR/..."
+        scp -P $ECS_PORT -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no test.txt $ECS_USER@$ECS_HOST:${TARGET_DIR}/test.txt
 
         # 清理
         rm -f test.txt ~/.ssh/id_rsa
 
-        echo "✅ 凭据文件已保存到服务器: /tmp/test.txt"
+        echo "✅ 凭据文件已保存到服务器: ${TARGET_DIR}/test.txt"
 
     - name: Sync files to Alibaba Cloud ECS
       # 仅在有数据变化时同步到服务器
