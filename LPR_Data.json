@@ -1,6 +1,16 @@
 {
-  "last_updated": "2026-01-04T16:25:02.793549",
+  "last_updated": "2026-03-13T04:28:20.770861",
   "data": [
+    {
+      "date": "2026-02-24",
+      "one_year_rate": "3.00",
+      "five_year_rate": "3.50"
+    },
+    {
+      "date": "2026-01-20",
+      "one_year_rate": "3.00",
+      "five_year_rate": "3.50"
+    },
     {
       "date": "2025-12-22",
       "one_year_rate": "3.00",

@@ -229,13 +229,16 @@ class LPRDataFetcher:
             # 保存JSON格式
             json_file = os.path.join(self.output_dir, f"{base_filename}.json")
             sorted_records = sorted(records, key=lambda x: x['date'], reverse=True)
+            date_range = {}
+            if records:
+                date_range = {
+                    'start': min(r['date'] for r in records),
+                    'end': max(r['date'] for r in records)
+                }
             json_data = {
                 'year': year,
                 'total_records': len(records),
-                'date_range': {
-                    'start': min(r['date'] for r in records),
-                    'end': max(r['date'] for r in records)
-                },
+                'date_range': date_range,
                 'last_updated': datetime.datetime.now().isoformat(),
                 'data': [
                     {
