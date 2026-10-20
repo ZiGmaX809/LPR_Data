@@ -1,12 +1,17 @@
 {
   "year": 2026,
-  "total_records": 9,
+  "total_records": 10,
   "date_range": {
     "start": "2026-01-20",
-    "end": "2026-09-20"
+    "end": "2026-10-20"
   },
-  "last_updated": "2026-09-20T21:21:29.539178",
+  "last_updated": "2026-10-20T22:11:10.001277",
   "data": [
+    {
+      "date": "2026-10-20",
+      "one_year_rate": "3.00",
+      "five_year_rate": "3.50"
+    },
     {
       "date": "2026-09-20",
       "one_year_rate": "3.00",
